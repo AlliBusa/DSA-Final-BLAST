@@ -12,10 +12,16 @@ The blast algorithm is made from a sequence of steps, denoted below:
 
 
 """
+import pickle
 
 #from colinscode import databasedict
 
-def createListofWords(input_seq):
+def load_text_file(filename):
+    """ Loads a text file and returns a file pointer"""
+    f = open(filename, 'r')
+    return f
+
+def create_list_of_words(input_seq):
     """
     takes the input sequence, and returns all of the possible words from it
     as of now, we're only looking at DNA, so words are 11 bases long
@@ -26,25 +32,25 @@ def createListofWords(input_seq):
     """
 
     #checking that input string is correct
-    if len(input_seq)<11:
-        assert len(input_seq)=>11, "input string too small"
+    assert len(input_seq) >= 11, "input string too small"
 
     #if there's only one word
     if len(input_seq) == 11:
-        return input_seq
+        return [input_seq]
     #else
     input_words = []
     for i in len(input_seq-10):
         input_words.append(input_seq[i:i+11])
     return input_words
 
-def createPositionsList(input_words, databasedict):
+def create_positions_list(input_words, databasedict):
     """
     takes in a list of words in input sequence and the dictionary of the data
     returns a nested list of all the positions of the words in the database
 
     input_words: list of words in input_seq
-    databasedict: dictionary that contains all unique words in the database and the positions where they occur
+    databasedict: dictionary that contains all unique words in the database
+        and the positions where they occur
 
     returns position_list, nested list
     """
@@ -55,6 +61,20 @@ def createPositionsList(input_words, databasedict):
             position_list.append(databasedict[word])
     return position_list
 
+def find_possible_sequences(source_file_name, positions, seq_len):
+    """ Takes a source file and a list of positions in that file and
+        returns a list of sequences that have the length seq_len and
+        center at the position """
+
+    f = load_text_file(source_file_name)
+    sequences = []
+
+    for position in positions:
+        f.seek(position - seq_len // 2)
+        sequences.append(f.read(seq_len))
+
+    return sequences
+
 
 
 # Test Functions
@@ -62,3 +82,8 @@ def createPositionsList(input_words, databasedict):
 ### Test Functions for createListofWords
 
 ### Test Functions for createPositionsList
+
+
+
+if __name__ == "__main__":
+    print(find_possible_sequences("Utils/Data/yeast.txt", [1000, 4000], 20))

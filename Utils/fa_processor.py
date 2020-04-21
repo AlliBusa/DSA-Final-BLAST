@@ -12,7 +12,15 @@ def load_file(filename):
 
 
 def compress(data, filename):
-    pickle.dump( data, open( filename, "wb" ))
+    """ Compresses arbitrary data structure into binary file """
+    pickle.dump(data, open(filename, "wb"))
+
+def save_text(data, filename):
+    """ Compresses arbitrary data structure into binary file """
+    f = open(filename, 'w')
+    for i in data:
+        f.write(i)
+    f.close()
 
 
 def strip_file(filename):
@@ -25,7 +33,8 @@ def strip_file(filename):
     return (contents, data[1])
 
 
-def combine_files(filenames, output_file):
+def combine_files(filenames, output_file, output_text_file):
+    """ Concatenates files and creates a list of names of the creatures they came from """
     full_data = []
     names = []
     counter = 0
@@ -37,8 +46,9 @@ def combine_files(filenames, output_file):
         names.append((filename[5:-3], (counter, counter + length)))
         counter += length
     compress((names, full_data, counter), output_file)
+    save_text(full_data, output_text_file)
     return (names, full_data, counter)
 
 
 if __name__ == "__main__":
-    combine_files(["Data/alpaca.fa"], "Data/alpaca.p")
+    combine_files(["Data/yeast.fa"], "Data/yeast.p", "Data/yeast.txt")
