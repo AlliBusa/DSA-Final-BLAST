@@ -113,3 +113,4 @@ venv.bak/
 *.bed
 *.fa
 *.2bit
+Data/
