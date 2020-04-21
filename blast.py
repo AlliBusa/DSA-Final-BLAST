@@ -1,14 +1,25 @@
 """
-Note: the code and pseudocode written in the .py file are assuming that there is a dictionary which contains all of the unique words in the database, and the positions were in the database they appear
+Note: the code and pseudocode written in the .py file are assuming that there is a dictionary
+which contains all of the unique words in the database, and the positions where
+they appear in the database
 
 
 The blast algorithm is made from a sequence of steps, denoted below:
 -take the input query (DNA, for now) and create a list of words from it
--take all those words, and create a nested list that contains all of the positions of all of the words in the query, that are in the database
--take those positions of the words in the database, and experiment with shifting them back and forth, in order to get the best sequence to put in the Smith-Waterman algorithm
+
+-take all those words, and create a nested list that contains all of the positions of all of the
+    words in the query, that are in the database
+
+-take those positions of the words in the database, and experiment with shifting them back and
+    forth, in order to get the best sequence to put in the Smith-Waterman algorithm
+
 -run the Smith-Waterman algorithm and receive seeds
--input the seeds in a DP minimum edit distance algorithm, that compares it with the original input sequence
--return the top five minimum edit distance seeds, or the seeds in increasing order of edit distance, or something else TBD
+
+-input the seeds in a DP minimum edit distance algorithm, that compares it with the
+    original input sequence
+
+-return the top five minimum edit distance seeds, or the seeds in increasing order of
+    edit distance, or something else TBD
 
 
 """
@@ -20,6 +31,11 @@ def load_text_file(filename):
     """ Loads a text file and returns a file pointer"""
     f = open(filename, 'r')
     return f
+
+def load_file(filename):
+    """ Loads a compressed file and returns its contents"""
+    data = pickle.load(open(filename, "rb"))
+    return data
 
 def create_list_of_words(input_seq):
     """
@@ -74,6 +90,7 @@ def find_possible_sequences(source_file_name, positions, seq_len):
         sequences.append(f.read(seq_len))
 
     return sequences
+
 
 
 
