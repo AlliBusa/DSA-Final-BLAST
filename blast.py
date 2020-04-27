@@ -70,7 +70,6 @@ def create_positions_list(input_words, database_file_name):
 
     returns position_list, nested list
     """
-
     (names, databasedict) = load_file(database_file_name)
 
     position_list = [] #output list
@@ -141,6 +140,8 @@ def blast(input_seq, data_filename, dict_filename):
     positions = create_positions_list(words, data_filename)
     sequences = find_possible_sequences(data_filename, positions, 2*len(input_seq))
     sequence_allignment(input_seq, sequences)
+
+    return 0
 
 # Test Functions
 
