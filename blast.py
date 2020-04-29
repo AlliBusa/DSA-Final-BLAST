@@ -101,21 +101,22 @@ def find_possible_sequences(source_file_name, positions, seq_len):
     return sequences
 
 
-def sequence_alignment(input_seq, sequences):
+def sequence_alignment(input_seq, sequences, positions):
     """
     Run smith-waterman on input_seq and each of the sequences
     """
 
-
+    output = []
+    counter = 0
     for sequence in sequences:
-        output = []
         DP = np.zeros(shape=(len(input_seq)+1, len(sequence)+1))
         DP [:] = np.nan
         DP[0][:] = 0
         DP[:,0] = 0
         TM = deepcopy(DP)
         _, cost = smith_waterman(input_seq, sequence, DP, TM)
-        output.append((sequence, cost))
+        output.append((sequence, positions[counter], cost))
+        counter += 1
     #sort by best
     output.sort(key=lambda tup: tup[1], reverse=True)
     return output
@@ -163,8 +164,8 @@ def smith_waterman(s1, s2, DP, TM):
     Returns the best substrings and the total cost
     """
     sw_scoring(s1,s2, DP, TM) #fill the matrices
-    print(TM)
-    print(DP)
+    #print(TM)
+    #print(DP)
     pointer = np.unravel_index(np.nanargmax(DP, axis=None), DP.shape) #find the max value
     best = DP[pointer] #create pointer to max value
     #initialize final strings
@@ -218,12 +219,27 @@ def smith_waterman(s1, s2, DP, TM):
     return (subs1, subs2), best
 
 
+def filter_positions(positions):
+    positions.sort()
+    new_positions = []
+    gap_length = 1
+    index = -gap_length-1
+    for i in range(len(positions)):
+        if positions[i] > index + gap_length:
+            new_positions.append(positions[i])
+        index = positions[i]
+    return new_positions
+
+
+
+
 def blast(input_seq, data_filename, dict_filename):
     words = create_list_of_words(input_seq)
     positions = create_positions_list(words, dict_filename)
-    sequences = find_possible_sequences(data_filename, positions, 2*len(input_seq))
-    output_list = sequence_alignment(input_seq, sequences)
-
+    new_positions = filter_positions(positions)
+    sequences = find_possible_sequences(data_filename, new_positions, 2*len(input_seq))
+    # print(sequences)
+    output_list = sequence_alignment(input_seq, sequences, new_positions)
     return output_list
 
 # Test Functions
@@ -238,4 +254,4 @@ if __name__ == "__main__":
     # print(find_possible_sequences("Utils/Data/yeast.txt", [1000, 4000], 20))
     # print(find_possible_sequences("Utils/Data/yeast.txt", create_positions_list(create_list_of_words("ttactgttaatggtttgttcaataccg"), "Utils/Data/yeast_dictionary.p"), 40))
     #print(smith_waterman("hello", "hell o"))
-    print(blast("gttggtgcacgtggagcctcaac", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))
+    print(blast("ttttttttttt", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))
