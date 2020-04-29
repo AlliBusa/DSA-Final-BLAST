@@ -39,7 +39,9 @@ def load_text_file(filename):
 
 def load_file(filename):
     """ Loads a compressed file and returns its contents"""
-    data = pickle.load(open(filename, "rb"))
+    f = open(filename, "rb")
+    f.seek(0)
+    data = pickle.load(f)
     return data
 
 def create_list_of_words(input_seq):
@@ -104,12 +106,18 @@ def sequence_alignment(input_seq, sequences):
     Run smith-waterman on input_seq and each of the sequences
     """
 
-    output = []
+
     for sequence in sequences:
-        _, cost = smith_waterman(input_seq, sequence)
+        output = []
+        DP = np.zeros(shape=(len(input_seq)+1, len(sequence)+1))
+        DP [:] = np.nan
+        DP[0][:] = 0
+        DP[:,0] = 0
+        TM = deepcopy(DP)
+        _, cost = smith_waterman(input_seq, sequence, DP, TM)
         output.append((sequence, cost))
     #sort by best
-    output.sort(key=lambda tup: tup[1], reversed=True)
+    output.sort(key=lambda tup: tup[1], reverse=True)
     return output
 
 def sw_scoring(s1,s2, DP, TM, gap_penalty = 3, match = 1, mismatch = -1):
@@ -154,7 +162,7 @@ def smith_waterman(s1, s2, DP, TM):
 
     Returns the best substrings and the total cost
     """
-    sw_scoring_tb2(s1,s2, DP, TM) #fill the matrices
+    sw_scoring(s1,s2, DP, TM) #fill the matrices
     print(TM)
     print(DP)
     pointer = np.unravel_index(np.nanargmax(DP, axis=None), DP.shape) #find the max value
@@ -202,7 +210,7 @@ def smith_waterman(s1, s2, DP, TM):
             #    break
 
         #append new values to final strings
-        #formatting.append(("move",dict[ind]))
+        #formatting.append(("move",dict_0[ind]))
 
     #return final substrings reversed
     subs1 = subs1[::-1]
@@ -212,7 +220,7 @@ def smith_waterman(s1, s2, DP, TM):
 
 def blast(input_seq, data_filename, dict_filename):
     words = create_list_of_words(input_seq)
-    positions = create_positions_list(words, data_filename)
+    positions = create_positions_list(words, dict_filename)
     sequences = find_possible_sequences(data_filename, positions, 2*len(input_seq))
     output_list = sequence_alignment(input_seq, sequences)
 
@@ -230,4 +238,4 @@ if __name__ == "__main__":
     # print(find_possible_sequences("Utils/Data/yeast.txt", [1000, 4000], 20))
     # print(find_possible_sequences("Utils/Data/yeast.txt", create_positions_list(create_list_of_words("ttactgttaatggtttgttcaataccg"), "Utils/Data/yeast_dictionary.p"), 40))
     #print(smith_waterman("hello", "hell o"))
-    #print(blast(input_seq = "gttggtgcacgtggagcctcaac", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))
+    print(blast("gttggtgcacgtggagcctcaac", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))
