@@ -138,9 +138,9 @@ def sw_scoring(s1,s2, DP, TM, gap_penalty = 3, match = 1, mismatch = -1):
 
     val1, _ = sw_scoring(s1[:-1], s2[:-1], DP, TM)
     val1 = val1 + (match if s1[-1]==s2[-1] else mismatch) #diag 1
-    val2,  _ = sw_scoring(s1[:-1], s2, DP, TM) #left 2
+    val2,  _ = sw_scoring(s1, s2[:-1], DP, TM) #left 2
     val2 = val2 -gap_penalty
-    val3, _ = sw_scoring(s1, s2[:-1], DP, TM) #top 3
+    val3, _ = sw_scoring(s1[:-1], s2, DP, TM) #top 3
     val3= val3 -gap_penalty
     vals = [0, val1, val2, val3]
     TM[len(s1),len(s2)] = np.argmax(vals)
@@ -154,48 +154,60 @@ def smith_waterman(s1, s2, DP, TM):
 
     Returns the best substrings and the total cost
     """
-    sw_scoring(s1,s2, DP, TM) #fill the matrices
+    sw_scoring_tb2(s1,s2, DP, TM) #fill the matrices
+    print(TM)
+    print(DP)
     pointer = np.unravel_index(np.nanargmax(DP, axis=None), DP.shape) #find the max value
     best = DP[pointer] #create pointer to max value
     #initialize final strings
     subs1 = ""
     subs2 = ""
-    subs1 += s1[pointer[0]-1]
-    subs2 += s2[pointer[1]-1]
+    formatting = [] #for debugging purposes
     #while the end of an input string isn't reached
-    while np.isnan(TM[pointer]) != True or TM[pointer] != 0:
+    dict={
+    0 : "diag",
+    1: "left",
+    2: "up" }
+    while DP[pointer] != 0:
     #check which direction it came from
-
-        #diag
-        if TM[pointer] == 1:
+        #get max
+        #formatting.append(("current position", DP[pointer], pointer))
+        #print("what", [DP[pointer[0]-1, pointer[1]-1], DP[pointer[0], pointer[1]-1], DP[pointer[0], pointer[1]-1]])
+        ind = np.argmax([DP[pointer[0]-1, pointer[1]-1],
+                        DP[pointer[0], pointer[1]-1],
+                        DP[pointer[0]-1, pointer[1]] ])
+        #diagonal
+        if ind ==0:
+            subs1 += s1[pointer[0]-1]
+            subs2 += s2[pointer[1]-1]
             pointer = (pointer[0]-1, pointer[1]-1)
-            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
-                break
-            a1 = s1[pointer[0]-1]
-            a2 = s2[pointer[1]-1]
 
-        #left
-        elif TM[pointer] == 2:
+
+        #LEFT
+        elif ind == 1:
+            subs1 += "-"
+            subs2 += s2[pointer[1]-1]
+
+
             pointer = (pointer[0], pointer[1]-1)
-            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
-                break
-            a1 = "-"
-            a2 = s2[pointer[1]-1]
-        #top
-        else:
-            pointer = (pointer[0], pointer[1]-1)
-            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
-                break
-            a1 = "-"
-            a2 = s2[pointer[1]-1]
+            #if DP[pointer] == 0:
+            #    break
+        #UP
+        elif ind == 2:
+            subs1 += s1[pointer[0]-1]
+            subs2 +="-"
+
+            pointer = (pointer[0]-1, pointer[1])
+            #if DP[pointer] == 0:
+            #    break
+
         #append new values to final strings
-        subs1 += a1
-        subs2 += a2
+        #formatting.append(("move",dict[ind]))
 
     #return final substrings reversed
     subs1 = subs1[::-1]
     subs2 = subs2[::-1]
-    return subs1, subs2, best
+    return (subs1, subs2), best
 
 
 def blast(input_seq, data_filename, dict_filename):
