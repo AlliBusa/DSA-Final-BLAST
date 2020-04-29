@@ -24,6 +24,11 @@ The blast algorithm is made from a sequence of steps, denoted below:
 
 """
 import pickle
+import numpy as np
+import time
+from copy import deepcopy
+import pandas as pd
+from tabulate import tabulate
 
 #from colinscode import databasedict
 
@@ -92,56 +97,114 @@ def find_possible_sequences(source_file_name, positions, seq_len):
         sequences.append(f.read(seq_len))
 
     return sequences
-    
 
-def sequence_allignment(input_seq, sequences):
+
+def sequence_alignment(input_seq, sequences):
     """
-    Run smith-waterman on input_seq and each of the sequences 
+    Run smith-waterman on input_seq and each of the sequences
     """
 
     output = []
     for sequence in sequences:
-        output.append(smith_waterman(input_seq, sequence))
+        _, cost = smith_waterman(input_seq, sequence)
+        output.append((sequence, cost))
+    #sort by best
+    output.sort(key=lambda tup: tup[1], reversed=True)
+    return output
 
-def smith_waterman(input_seq, seq):
+def sw_scoring(s1,s2, DP, TM, gap_penalty = 3, match = 1, mismatch = -1):
     """
-        Determine the substitution matrix and the gap penalty scheme.
-        s ( a , b )  - Similarity score of the elements that constituted the two sequences
-        W k- The penalty of a gap that has length k {\displaystyle k} k
-        Construct a scoring matrix H  H and initialize its first row and first column. The size of the scoring matrix is ( n + 1 ) ∗ ( m + 1 ). The matrix uses 0-based indexing.
+    Implementing the scoring matrix part of the smith waterman algorithm, currently being used as helper function for smith_waterman function below
 
-        H k 0 = H 0 l = 0 f o r 0 ≤ k ≤ n a n d 0 ≤ l ≤ m 
+    Takes in the input sequence and seq strings, and returns their scoring matrix and traceback matrix
 
-    Fill the scoring matrix using the equation below.
+    In this case, the scoring matrix keeps track of what move was needed to land on a particular spot in the scoring matrix. This will be used for traceback later
 
-        H i j = max { H i − 1 , j − 1 + s ( a i , b j ) , max k ≥ 1 , max l ≥ 1  , 0 ( 1 ≤ i ≤ n , 1 ≤ j ≤ m )
-        where
-        H i − 1 , j − 1 + s ( a i , b j ) is the score of aligning a i  and b j {\displaystyle b_{j}} b_{j},
-        H i − k , j − W k  is the score if a i  is at the end of a gap of length k  k,
-        H i , j − l − W l  is the score if b j  is at the end of a gap of length l {\displaystyle l} l,
-        0 {\displaystyle 0} {\displaystyle 0} means there is no similarity up to a i {\displaystyle a_{i}} a_{i} and b j {\displaystyle b_{j}} b_{j}.
+    The scoring parameters are gap_penalty, match and mismatch. These can be changed by the user
 
-    Traceback. Starting at the highest score in the scoring matrix H {\displaystyle H} H and ending at a matrix cell that has a score of 0, traceback based on the source of each score recursively to generate the best local alignment.
+    s1: input_seq
+    s2: seq
+    DP: initialized scoring matrix
+    TM: initialized traceback matrix
+
+    returns last value, but also updates matrices globally
     """
+    if np.isnan(DP[len(s1),len(s2)]) != True:
+        return DP[len(s1),len(s2)] , TM[len(s1),len(s2)]
 
-    gap_penalty = 3
+    if len(s1) == 0 or len(s2) == 0:
+        #print("s1, s2", s1,s2)
+        return 0, 0
 
-    if len(input_seq) == 0 or len(seq) == 0:
-        return 0
+    val1, _ = sw_scoring(s1[:-1], s2[:-1], DP, TM)
+    val1 = val1 + (match if s1[-1]==s2[-1] else mismatch) #diag 1
+    val2,  _ = sw_scoring(s1[:-1], s2, DP, TM) #left 2
+    val2 = val2 -gap_penalty
+    val3, _ = sw_scoring(s1, s2[:-1], DP, TM) #top 3
+    val3= val3 -gap_penalty
+    vals = [0, val1, val2, val3]
+    TM[len(s1),len(s2)] = np.argmax(vals)
+    DP[len(s1),len(s2)] = max(vals)
+    return DP[len(s1),len(s2)], TM[len(s1),len(s2)]
 
-    return max(smith_waterman(input_seq[:-1], seq[:-1]) + (1 if input_seq[-1]==seq[-1] else -1), \
-        smith_waterman(input_seq[:-1], seq)-gap_penalty, \
-        smith_waterman(input_seq, seq[:-1])-gap_penalty, \
-        0)
+
+def smith_waterman(s1, s2, DP, TM):
+    """
+    Implementing the traceback part of the smith-waterman algorithm
+
+    Returns the best substrings and the total cost
+    """
+    sw_scoring(s1,s2, DP, TM) #fill the matrices
+    pointer = np.unravel_index(np.nanargmax(DP, axis=None), DP.shape) #find the max value
+    best = DP[pointer] #create pointer to max value
+    #initialize final strings
+    subs1 = ""
+    subs2 = ""
+    subs1 += s1[pointer[0]-1]
+    subs2 += s2[pointer[1]-1]
+    #while the end of an input string isn't reached
+    while np.isnan(TM[pointer]) != True or TM[pointer] != 0:
+    #check which direction it came from
+
+        #diag
+        if TM[pointer] == 1:
+            pointer = (pointer[0]-1, pointer[1]-1)
+            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
+                break
+            a1 = s1[pointer[0]-1]
+            a2 = s2[pointer[1]-1]
+
+        #left
+        elif TM[pointer] == 2:
+            pointer = (pointer[0], pointer[1]-1)
+            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
+                break
+            a1 = "-"
+            a2 = s2[pointer[1]-1]
+        #top
+        else:
+            pointer = (pointer[0], pointer[1]-1)
+            if np.isnan(TM[pointer]) == True or TM[pointer] == 0:
+                break
+            a1 = "-"
+            a2 = s2[pointer[1]-1]
+        #append new values to final strings
+        subs1 += a1
+        subs2 += a2
+
+    #return final substrings reversed
+    subs1 = subs1[::-1]
+    subs2 = subs2[::-1]
+    return subs1, subs2, best
 
 
 def blast(input_seq, data_filename, dict_filename):
     words = create_list_of_words(input_seq)
     positions = create_positions_list(words, data_filename)
     sequences = find_possible_sequences(data_filename, positions, 2*len(input_seq))
-    sequence_allignment(input_seq, sequences)
+    output_list = sequence_alignment(input_seq, sequences)
 
-    return 0
+    return output_list
 
 # Test Functions
 
@@ -154,4 +217,5 @@ def blast(input_seq, data_filename, dict_filename):
 if __name__ == "__main__":
     # print(find_possible_sequences("Utils/Data/yeast.txt", [1000, 4000], 20))
     # print(find_possible_sequences("Utils/Data/yeast.txt", create_positions_list(create_list_of_words("ttactgttaatggtttgttcaataccg"), "Utils/Data/yeast_dictionary.p"), 40))
-    print(smith_waterman("hello", "hell o"))
+    #print(smith_waterman("hello", "hell o"))
+    #print(blast(input_seq = "gttggtgcacgtggagcctcaac", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))
