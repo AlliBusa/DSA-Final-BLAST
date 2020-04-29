@@ -22,9 +22,14 @@ def run_blast(args):
     sequence = input("Enter Search sequence: ")
     print("Calculating...")
     results = blast(sequence, dict_file, data_file)
+    results.sort(key=lambda x:x[2], reverse=True)
 
     print('\n\nResults:\n')
-    print(results)
+    
+    for result in results:
+        print(colored("\nScore: ", "green", attrs=['bold']), result[2])
+        print(colored("Position: ", "blue", attrs=['bold']), result[1])
+        print(colored("Sequence", "blue", attrs=['bold']), result[0])
 
     
 if __name__ == "__main__":
