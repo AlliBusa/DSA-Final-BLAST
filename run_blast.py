@@ -26,7 +26,7 @@ def run_blast(args):
 
     print('\n\nResults:\n')
     
-    for result in results:
+    for result in results[:5]:
         print(colored("\nScore: ", "green", attrs=['bold']), result[2])
         print(colored("Position: ", "blue", attrs=['bold']), result[1])
         print(colored("Sequence", "blue", attrs=['bold']), result[0])
