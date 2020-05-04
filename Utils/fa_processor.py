@@ -15,6 +15,7 @@ def compress(data, filename):
     """ Compresses arbitrary data structure into binary file """
     pickle.dump(data, open(filename, "wb"))
 
+
 def save_text(data, filename):
     """ Compresses arbitrary data structure into binary file """
     f = open(filename, 'w')

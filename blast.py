@@ -1,8 +1,10 @@
 """
-Note: the code and pseudocode written in the .py file are assuming that there is a dictionary
-which contains all of the unique words in the database, and the positions where
-they appear in the database
-
+ ____  _                _____ _______
+|  _ \| |        /\    / ____|__   __|
+| |_) | |       /  \  | (___    | |
+|  _ <| |      / /\ \  \___ \   | |
+| |_) | |____ / ____ \ ____) |  | |
+|____/|______/_/    \_\_____/   |_|
 
 The blast algorithm is made from a sequence of steps, denoted below:
 -take the input query (DNA, for now) and create a list of words from it
@@ -25,17 +27,16 @@ The blast algorithm is made from a sequence of steps, denoted below:
 """
 import pickle
 import numpy as np
-import time
 from copy import deepcopy
-import pandas as pd
 from tabulate import tabulate
+import pytest
 
-#from colinscode import databasedict
 
 def load_text_file(filename):
     """ Loads a text file and returns a file pointer"""
     f = open(filename, 'r')
     return f
+
 
 def load_file(filename):
     """ Loads a compressed file and returns its contents"""
@@ -43,6 +44,7 @@ def load_file(filename):
     f.seek(0)
     data = pickle.load(f)
     return data
+
 
 def create_list_of_words(input_seq):
     """
@@ -60,11 +62,12 @@ def create_list_of_words(input_seq):
     #if there's only one word
     if len(input_seq) == 11:
         return [input_seq]
-    #else
+
     input_words = []
     for i in range(len(input_seq)-10):
         input_words.append(input_seq[i:i+11])
     return input_words
+
 
 def create_positions_list(input_words, database_file_name):
     """
@@ -77,7 +80,7 @@ def create_positions_list(input_words, database_file_name):
 
     returns position_list, nested list
     """
-    (names, databasedict) = load_file(database_file_name)
+    (_, databasedict) = load_file(database_file_name)
 
     position_list = [] #output list
     #find the corresponding positions for each word
@@ -85,6 +88,7 @@ def create_positions_list(input_words, database_file_name):
         if word in databasedict: #make sure the word is there
             position_list.extend(databasedict[word])
     return position_list
+
 
 def find_possible_sequences(source_file_name, positions, seq_len):
     """ Takes a source file and a list of positions in that file and
@@ -95,7 +99,7 @@ def find_possible_sequences(source_file_name, positions, seq_len):
     sequences = []
 
     for position in positions:
-        f.seek(position - seq_len // 2)
+        f.seek(position - seq_len // 2) # Seek the position in the file
         sequences.append(f.read(seq_len))
 
     return sequences
@@ -109,19 +113,15 @@ def sequence_alignment(input_seq, sequences, positions):
     output = []
     counter = 0
     for sequence in sequences:
-        DP = np.zeros(shape=(len(input_seq)+1, len(sequence)+1))
-        DP [:] = np.nan
-        DP[0][:] = 0
-        DP[:,0] = 0
-        TM = deepcopy(DP)
-        _, cost = smith_waterman(input_seq, sequence, DP, TM)
+        _, cost = smith_waterman(input_seq, sequence)
         output.append((sequence, positions[counter], cost))
         counter += 1
     #sort by best
     output.sort(key=lambda tup: tup[1], reverse=True)
     return output
 
-def sw_scoring(s1,s2, DP, TM, gap_penalty = 3, match = 1, mismatch = -1):
+
+def sw_scoring(s1, s2, DP, TM, gap_penalty=3, match=1, mismatch=-1):
     """
     Implementing the scoring matrix part of the smith waterman algorithm, currently being used as helper function for smith_waterman function below
 
@@ -138,80 +138,70 @@ def sw_scoring(s1,s2, DP, TM, gap_penalty = 3, match = 1, mismatch = -1):
 
     returns last value, but also updates matrices globally
     """
-    if np.isnan(DP[len(s1),len(s2)]) != True:
-        return DP[len(s1),len(s2)] , TM[len(s1),len(s2)]
+    if not np.isnan(DP[len(s1), len(s2)]):
+        return DP[len(s1), len(s2)], TM[len(s1), len(s2)]
 
     if len(s1) == 0 or len(s2) == 0:
-        #print("s1, s2", s1,s2)
         return 0, 0
 
     val1, _ = sw_scoring(s1[:-1], s2[:-1], DP, TM)
-    val1 = val1 + (match if s1[-1]==s2[-1] else mismatch) #diag 1
-    val2,  _ = sw_scoring(s1, s2[:-1], DP, TM) #left 2
+    val1 = val1 + (match if s1[-1] == s2[-1] else mismatch) #diag 1
+    val2, _ = sw_scoring(s1, s2[:-1], DP, TM) #left 2
     val2 = val2 -gap_penalty
     val3, _ = sw_scoring(s1[:-1], s2, DP, TM) #top 3
-    val3= val3 -gap_penalty
+    val3 = val3 -gap_penalty
     vals = [0, val1, val2, val3]
-    TM[len(s1),len(s2)] = np.argmax(vals)
-    DP[len(s1),len(s2)] = max(vals)
-    return DP[len(s1),len(s2)], TM[len(s1),len(s2)]
+    TM[len(s1), len(s2)] = np.argmax(vals)
+    DP[len(s1), len(s2)] = max(vals)
+
+    return DP[len(s1), len(s2)], TM[len(s1), len(s2)]
 
 
-def smith_waterman(s1, s2, DP, TM):
+def smith_waterman(s1, s2, DP=None, TM=None):
     """
     Implementing the traceback part of the smith-waterman algorithm
 
     Returns the best substrings and the total cost
     """
+    if DP is None and TM is None:
+        # Create scoring matrices if not already created
+        DP = np.zeros(shape=(len(s1)+1, len(s2)+1))
+        DP [:] = np.nan
+        DP[0][:] = 0
+        DP[:, 0] = 0
+        TM = deepcopy(DP)
+
     sw_scoring(s1,s2, DP, TM) #fill the matrices
-    #print(TM)
-    #print(DP)
     pointer = np.unravel_index(np.nanargmax(DP, axis=None), DP.shape) #find the max value
     best = DP[pointer] #create pointer to max value
     #initialize final strings
     subs1 = ""
     subs2 = ""
-    formatting = [] #for debugging purposes
+
     #while the end of an input string isn't reached
-    dict={
-    0 : "diag",
-    1: "left",
-    2: "up" }
     while DP[pointer] != 0:
     #check which direction it came from
-        #get max
-        #formatting.append(("current position", DP[pointer], pointer))
-        #print("what", [DP[pointer[0]-1, pointer[1]-1], DP[pointer[0], pointer[1]-1], DP[pointer[0], pointer[1]-1]])
         ind = np.argmax([DP[pointer[0]-1, pointer[1]-1],
-                        DP[pointer[0], pointer[1]-1],
-                        DP[pointer[0]-1, pointer[1]] ])
+                         DP[pointer[0], pointer[1]-1],
+                         DP[pointer[0]-1, pointer[1]]])
+
         #diagonal
-        if ind ==0:
+        if ind == 0:
             subs1 += s1[pointer[0]-1]
             subs2 += s2[pointer[1]-1]
             pointer = (pointer[0]-1, pointer[1]-1)
 
-
-        #LEFT
+        #left
         elif ind == 1:
             subs1 += "-"
             subs2 += s2[pointer[1]-1]
-
-
             pointer = (pointer[0], pointer[1]-1)
-            #if DP[pointer] == 0:
-            #    break
-        #UP
+
+        #up
         elif ind == 2:
             subs1 += s1[pointer[0]-1]
-            subs2 +="-"
-
+            subs2 += "-"
             pointer = (pointer[0]-1, pointer[1])
-            #if DP[pointer] == 0:
-            #    break
-
-        #append new values to final strings
-        #formatting.append(("move",dict_0[ind]))
 
     #return final substrings reversed
     subs1 = subs1[::-1]
@@ -220,38 +210,40 @@ def smith_waterman(s1, s2, DP, TM):
 
 
 def filter_positions(positions):
+    """ Filter the positions that are returned and sort them
+    Remove all near duplicate sequences that are shifts of only one letter"""
     positions.sort()
     new_positions = []
     gap_length = 1
-    index = -gap_length-1
-    for i in range(len(positions)):
+    index = -gap_length - 1
+    for i, _ in enumerate(positions):
         if positions[i] > index + gap_length:
             new_positions.append(positions[i])
         index = positions[i]
     return new_positions
 
 
-
-
 def blast(input_seq, data_filename, dict_filename):
+    """ Run the blast algorithm. Combines dictionary search with Smith Waterman """
     words = create_list_of_words(input_seq)
     positions = create_positions_list(words, dict_filename)
     new_positions = filter_positions(positions)
     sequences = find_possible_sequences(data_filename, new_positions, 2*len(input_seq))
-    # print(sequences)
     output_list = sequence_alignment(input_seq, sequences, new_positions)
     return output_list
 
+
 # Test Functions
+# All functions besides the Smith Waterman throw obvious errors when they dont work
+# so test functions are largely unnecissary
 
-### Test Functions for createListofWords
-
-### Test Functions for createPositionsList
+def test_sw():
+    """ Test that the Smith Waterman algorithm returns the correct sequence and score """
+    assert smith_waterman("Hello", "aHelloa") == (('Hello', 'Hello'), 5.0) # Performs alignment
+    assert smith_waterman("Why Hello There", "Why Hel lo There") == (('Why Hell-o There', 'Why Hel lo There'), 12.0) # Adds gap correctly
+    assert smith_waterman("atatctctatc", "tct") == (('tct', 'tct'), 3.0) # Finds matches even with duplicates
 
 
 
 if __name__ == "__main__":
-    # print(find_possible_sequences("Utils/Data/yeast.txt", [1000, 4000], 20))
-    # print(find_possible_sequences("Utils/Data/yeast.txt", create_positions_list(create_list_of_words("ttactgttaatggtttgttcaataccg"), "Utils/Data/yeast_dictionary.p"), 40))
-    #print(smith_waterman("hello", "hell o"))
     print(blast("ttttttttttt", "Utils/Data/yeast.txt", "Utils/Data/yeast_dictionary.p"))

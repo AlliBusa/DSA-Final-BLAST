@@ -1,12 +1,12 @@
 """ Program to run the blast algorithm and
- return useful information from it """
+ return useful information from it
+ Creates CLI for blast search and human readable results"""
 
-
-import pickle
-from blast import blast
 import sys
-from termcolor import colored
 import os
+import pickle
+from termcolor import colored
+from blast import blast
 
 
 def run_blast(args):
@@ -22,15 +22,15 @@ def run_blast(args):
     sequence = input("Enter Search sequence: ")
     print("Calculating...")
     results = blast(sequence, dict_file, data_file)
-    results.sort(key=lambda x:x[2], reverse=True)
+    results.sort(key=lambda x: x[2], reverse=True)
 
     print('\n\nResults:\n')
-    
+
     for result in results[:5]:
         print(colored("\nScore: ", "green", attrs=['bold']), result[2])
         print(colored("Position: ", "blue", attrs=['bold']), result[1])
         print(colored("Sequence", "blue", attrs=['bold']), result[0])
 
-    
+
 if __name__ == "__main__":
     run_blast(sys.argv)
